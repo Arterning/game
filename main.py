@@ -38,6 +38,12 @@ GAMES = [
         'module': 'games.flappy',
         'function': 'start_game'
     },
+    {
+        'name': 'Snake',
+        'description': 'Eat food and grow longer',
+        'module': 'games.snake',
+        'function': 'start_game'
+    },
     # Add more games here in the future
     # {
     #     'name': 'Other Game',
