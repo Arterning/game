@@ -22,6 +22,7 @@ YELLOW = (255, 255, 0)
 BROWN = (139, 69, 19)
 GRAY = (128, 128, 128)
 DARK_GREEN = (0, 100, 0)
+ORANGE = (255, 165, 0)
 
 # 方向枚举
 class Direction(Enum):
@@ -41,6 +42,61 @@ class WallType(Enum):
     BRICK = 1  # 可破坏
     STONE = 2  # 不可破坏
     GRASS = 3  # 草丛，不阻挡
+
+# 爆炸效果类
+class Explosion:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.frame = 0
+        self.max_frames = 20  # 爆炸持续帧数
+        self.max_radius = 40  # 最大爆炸半径
+        self.active = True
+
+    def update(self):
+        self.frame += 1
+        if self.frame >= self.max_frames:
+            self.active = False
+
+    def draw(self, screen):
+        if self.active:
+            # 计算当前爆炸的进度 (0到1)
+            progress = self.frame / self.max_frames
+
+            # 爆炸分为两个阶段：扩张(0-0.3)和消退(0.3-1.0)
+            if progress < 0.3:
+                # 扩张阶段
+                radius = int(self.max_radius * (progress / 0.3))
+                alpha = 255
+            else:
+                # 消退阶段
+                radius = self.max_radius
+                alpha = int(255 * (1 - (progress - 0.3) / 0.7))
+
+            # 绘制多层爆炸效果
+            # 外层 - 红色
+            outer_color = (*RED, min(alpha, 255))
+            pygame.draw.circle(screen, RED, (int(self.x), int(self.y)), radius)
+
+            # 中层 - 橙色
+            if radius > 5:
+                mid_radius = int(radius * 0.7)
+                pygame.draw.circle(screen, ORANGE, (int(self.x), int(self.y)), mid_radius)
+
+            # 内层 - 黄色
+            if radius > 10:
+                inner_radius = int(radius * 0.4)
+                pygame.draw.circle(screen, YELLOW, (int(self.x), int(self.y)), inner_radius)
+
+            # 添加闪光效果（在爆炸初期）
+            if progress < 0.2:
+                flash_radius = int(radius * 1.5)
+                flash_alpha = int(128 * (1 - progress / 0.2))
+                # 绘制半透明的白色闪光
+                s = pygame.Surface((flash_radius * 2, flash_radius * 2), pygame.SRCALPHA)
+                pygame.draw.circle(s, (255, 255, 255, flash_alpha),
+                                 (flash_radius, flash_radius), flash_radius)
+                screen.blit(s, (int(self.x - flash_radius), int(self.y - flash_radius)))
 
 # 子弹类
 class Bullet:
@@ -131,25 +187,78 @@ class Tank:
 
     def draw(self, screen):
         if self.health > 0:
-            # 绘制坦克主体
-            pygame.draw.rect(screen, self.color, self.get_rect())
-            pygame.draw.rect(screen, BLACK, self.get_rect(), 2)
-
-            # 绘制炮管
             center_x = self.x + self.width // 2
             center_y = self.y + self.height // 2
-            barrel_length = 20
+
+            # 根据方向旋转坦克的绘制
+            if self.direction == Direction.UP or self.direction == Direction.DOWN:
+                # 垂直方向
+                track_width = 8
+                track_height = self.height
+                body_width = self.width - 16
+                body_height = self.height - 4
+
+                # 绘制左履带
+                left_track = pygame.Rect(self.x + 2, self.y, track_width, track_height)
+                pygame.draw.rect(screen, (60, 60, 60), left_track)
+                pygame.draw.rect(screen, BLACK, left_track, 1)
+
+                # 绘制右履带
+                right_track = pygame.Rect(self.x + self.width - track_width - 2, self.y, track_width, track_height)
+                pygame.draw.rect(screen, (60, 60, 60), right_track)
+                pygame.draw.rect(screen, BLACK, right_track, 1)
+
+                # 绘制主体
+                body_rect = pygame.Rect(self.x + 8, self.y + 2, body_width, body_height)
+                pygame.draw.rect(screen, self.color, body_rect)
+                pygame.draw.rect(screen, BLACK, body_rect, 2)
+
+            else:
+                # 水平方向
+                track_width = self.width
+                track_height = 8
+                body_width = self.width - 4
+                body_height = self.height - 16
+
+                # 绘制上履带
+                top_track = pygame.Rect(self.x, self.y + 2, track_width, track_height)
+                pygame.draw.rect(screen, (60, 60, 60), top_track)
+                pygame.draw.rect(screen, BLACK, top_track, 1)
+
+                # 绘制下履带
+                bottom_track = pygame.Rect(self.x, self.y + self.height - track_height - 2, track_width, track_height)
+                pygame.draw.rect(screen, (60, 60, 60), bottom_track)
+                pygame.draw.rect(screen, BLACK, bottom_track, 1)
+
+                # 绘制主体
+                body_rect = pygame.Rect(self.x + 2, self.y + 8, body_width, body_height)
+                pygame.draw.rect(screen, self.color, body_rect)
+                pygame.draw.rect(screen, BLACK, body_rect, 2)
+
+            # 绘制炮塔（圆形）
+            turret_radius = 10
+            pygame.draw.circle(screen, self.color, (center_x, center_y), turret_radius)
+            pygame.draw.circle(screen, BLACK, (center_x, center_y), turret_radius, 2)
+
+            # 绘制炮管（更粗更明显）
+            barrel_length = 22
+            barrel_width = 6
 
             if self.direction == Direction.UP:
-                end_x, end_y = center_x, center_y - barrel_length
+                barrel_rect = pygame.Rect(center_x - barrel_width // 2, center_y - barrel_length,
+                                        barrel_width, barrel_length)
             elif self.direction == Direction.DOWN:
-                end_x, end_y = center_x, center_y + barrel_length
+                barrel_rect = pygame.Rect(center_x - barrel_width // 2, center_y,
+                                        barrel_width, barrel_length)
             elif self.direction == Direction.LEFT:
-                end_x, end_y = center_x - barrel_length, center_y
+                barrel_rect = pygame.Rect(center_x - barrel_length, center_y - barrel_width // 2,
+                                        barrel_length, barrel_width)
             elif self.direction == Direction.RIGHT:
-                end_x, end_y = center_x + barrel_length, center_y
+                barrel_rect = pygame.Rect(center_x, center_y - barrel_width // 2,
+                                        barrel_length, barrel_width)
 
-            pygame.draw.line(screen, BLACK, (center_x, center_y), (end_x, end_y), 4)
+            pygame.draw.rect(screen, (40, 40, 40), barrel_rect)
+            pygame.draw.rect(screen, BLACK, barrel_rect, 1)
 
     def shoot(self):
         if self.shoot_cooldown <= 0:
@@ -303,6 +412,7 @@ class Game:
         self.enemies = []
         self.bullets = []
         self.walls = []
+        self.explosions = []
         self.enemies_killed = 0
         self.enemies_per_level = 3
 
@@ -312,6 +422,7 @@ class Game:
         self.enemies = []
         self.bullets = []
         self.walls = []
+        self.explosions = []
 
         # 创建敌人
         num_enemies = self.enemies_per_level + (self.level - 1)
@@ -372,6 +483,10 @@ class Game:
                     if bullet.get_rect().colliderect(enemy.get_rect()):
                         bullet.active = False
                         enemy.health -= 1
+                        # 创建爆炸效果
+                        explosion_x = enemy.x + enemy.width // 2
+                        explosion_y = enemy.y + enemy.height // 2
+                        self.explosions.append(Explosion(explosion_x, explosion_y))
                         if enemy.health <= 0:
                             self.enemies.remove(enemy)
                             self.enemies_killed += 1
@@ -382,6 +497,10 @@ class Game:
                 if bullet.get_rect().colliderect(self.player.get_rect()):
                     bullet.active = False
                     self.player.health -= 1
+                    # 创建爆炸效果
+                    explosion_x = self.player.x + self.player.width // 2
+                    explosion_y = self.player.y + self.player.height // 2
+                    self.explosions.append(Explosion(explosion_x, explosion_y))
                     if self.player.health <= 0:
                         self.player.lives -= 1
                         if self.player.lives > 0:
@@ -512,6 +631,13 @@ class Game:
                 for bullet in self.bullets:
                     bullet.update()
 
+                # 更新爆炸效果
+                for explosion in self.explosions:
+                    explosion.update()
+
+                # 移除已完成的爆炸
+                self.explosions = [e for e in self.explosions if e.active]
+
                 # 处理碰撞
                 self.handle_collisions()
 
@@ -534,6 +660,10 @@ class Game:
             for wall in self.walls:
                 if wall.wall_type == WallType.GRASS:
                     wall.draw(self.screen)
+
+            # 绘制爆炸效果（在最上层）
+            for explosion in self.explosions:
+                explosion.draw(self.screen)
 
             # 绘制UI
             self.draw_ui()
