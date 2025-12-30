@@ -355,23 +355,22 @@ class BreakoutGame:
                     return False  # Exit program
 
                 if event.type == pygame.KEYDOWN:
+                    # ESC key - return to menu (works in any state)
                     if event.key == pygame.K_ESCAPE:
-                        return True  # Return to menu
+                        return True
 
-                    if self.state == GameState.WAITING:
-                        if event.key == pygame.K_SPACE:
-                            self.ball.launch()
-                            self.state = GameState.PLAYING
+                    # State-specific key handling
+                    if self.state == GameState.WAITING and event.key == pygame.K_SPACE:
+                        self.ball.launch()
+                        self.state = GameState.PLAYING
 
-                    elif self.state == GameState.GAME_OVER:
-                        if event.key == pygame.K_r:
-                            self.reset_game()
+                    if self.state == GameState.GAME_OVER and event.key == pygame.K_r:
+                        self.reset_game()
 
-                    elif self.state == GameState.LEVEL_COMPLETE:
-                        if event.key == pygame.K_SPACE:
-                            self.level += 1
-                            self.lives += 1  # Bonus life for completing level
-                            self.create_level()
+                    if self.state == GameState.LEVEL_COMPLETE and event.key == pygame.K_SPACE:
+                        self.level += 1
+                        self.lives += 1  # Bonus life for completing level
+                        self.create_level()
 
             # Game logic
             if self.state == GameState.PLAYING or self.state == GameState.WAITING:

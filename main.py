@@ -32,6 +32,12 @@ GAMES = [
         'module': 'games.breakout',
         'function': 'start_game'
     },
+    {
+        'name': 'Flappy Bird',
+        'description': 'Tap to fly and avoid pipes',
+        'module': 'games.flappy',
+        'function': 'start_game'
+    },
     # Add more games here in the future
     # {
     #     'name': 'Other Game',
