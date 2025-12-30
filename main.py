@@ -72,49 +72,79 @@ class GamePlatform:
 
         # Draw title
         title_text = self.title_font.render("GAME PLATFORM", True, YELLOW)
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 80))
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 60))
         self.screen.blit(title_text, title_rect)
 
         # Draw subtitle
         subtitle_text = self.desc_font.render("Select a game to play", True, WHITE)
-        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, 140))
+        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, 120))
         self.screen.blit(subtitle_text, subtitle_rect)
 
-        # 绘制游戏列表
-        start_y = 220
-        spacing = 120
+        # 卡片配置
+        card_width = 170
+        card_height = 220
+        card_spacing = 25
+        start_y = 200
 
+        # 计算总宽度并居中
+        total_width = len(self.games) * card_width + (len(self.games) - 1) * card_spacing
+        start_x = (SCREEN_WIDTH - total_width) // 2
+
+        # 绘制游戏卡片（横向排列）
         for i, game in enumerate(self.games):
-            y_pos = start_y + i * spacing
+            x_pos = start_x + i * (card_width + card_spacing)
 
             # 绘制游戏选项背景
             is_selected = (i == self.selected_index)
             bg_color = LIGHT_BLUE if is_selected else DARK_BLUE
 
             # 游戏卡片
-            card_rect = pygame.Rect(100, y_pos - 10, SCREEN_WIDTH - 200, 100)
-            pygame.draw.rect(self.screen, bg_color, card_rect, border_radius=10)
-            pygame.draw.rect(self.screen, WHITE, card_rect, 2, border_radius=10)
+            card_rect = pygame.Rect(x_pos, start_y, card_width, card_height)
+            pygame.draw.rect(self.screen, bg_color, card_rect, border_radius=15)
+            pygame.draw.rect(self.screen, WHITE, card_rect, 3 if is_selected else 2, border_radius=15)
 
-            # 选中标记
+            # 选中标记（在卡片上方）
             if is_selected:
-                marker_text = self.menu_font.render("►", True, GREEN)
-                self.screen.blit(marker_text, (60, y_pos + 10))
+                marker_text = self.menu_font.render("▼", True, GREEN)
+                marker_rect = marker_text.get_rect(center=(x_pos + card_width // 2, start_y - 25))
+                self.screen.blit(marker_text, marker_rect)
 
-            # 游戏名称
-            name_text = self.menu_font.render(game['name'], True, WHITE)
-            name_rect = name_text.get_rect(left=130, centery=y_pos + 20)
-            self.screen.blit(name_text, name_rect)
+            # 游戏名称（多行处理）
+            name_lines = game['name'].split()
+            name_y = start_y + 40
+            for line in name_lines:
+                name_text = self.menu_font.render(line, True, WHITE)
+                name_rect = name_text.get_rect(center=(x_pos + card_width // 2, name_y))
+                self.screen.blit(name_text, name_rect)
+                name_y += 45
 
-            # 游戏描述
-            desc_text = self.desc_font.render(game['description'], True, GRAY)
-            desc_rect = desc_text.get_rect(left=130, top=y_pos + 50)
-            self.screen.blit(desc_text, desc_rect)
+            # 游戏描述（多行换行）
+            desc_words = game['description'].split()
+            desc_lines = []
+            current_line = []
+            for word in desc_words:
+                test_line = ' '.join(current_line + [word])
+                test_text = self.desc_font.render(test_line, True, GRAY)
+                if test_text.get_width() <= card_width - 20:
+                    current_line.append(word)
+                else:
+                    if current_line:
+                        desc_lines.append(' '.join(current_line))
+                    current_line = [word]
+            if current_line:
+                desc_lines.append(' '.join(current_line))
+
+            desc_y = start_y + card_height - 80
+            for line in desc_lines[:3]:  # 最多显示3行
+                desc_text = self.desc_font.render(line, True, GRAY)
+                desc_rect = desc_text.get_rect(center=(x_pos + card_width // 2, desc_y))
+                self.screen.blit(desc_text, desc_rect)
+                desc_y += 25
 
         # Draw control hints
         hint_y = SCREEN_HEIGHT - 60
         hints = [
-            "UP/DOWN - Select",
+            "LEFT/RIGHT - Select",
             "ENTER - Start",
             "ESC - Quit"
         ]
@@ -130,9 +160,9 @@ class GamePlatform:
 
     def handle_menu_input(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
+            if event.key == pygame.K_LEFT:
                 self.selected_index = (self.selected_index - 1) % len(self.games)
-            elif event.key == pygame.K_DOWN:
+            elif event.key == pygame.K_RIGHT:
                 self.selected_index = (self.selected_index + 1) % len(self.games)
             elif event.key == pygame.K_RETURN:
                 return True  # Start game
